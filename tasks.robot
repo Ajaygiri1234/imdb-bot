@@ -4,7 +4,7 @@ Library           Collections
 Library           EntryPoint.py
 Library           BotLogger.py
 Resource          keywords.robot
-Variables         MyVariables.py
+Variables         MyVariables.py 
 
 *** Tasks ***
 Example Task
