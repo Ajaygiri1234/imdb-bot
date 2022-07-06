@@ -68,6 +68,7 @@ def get_identifier():
 
 
 def get_base_url():
+    return "http://13.58.117.7:8000/api/v1"
     try:
         if os.environ["LOCAL_TO_DEV_SERVER"] == "True":
             return "http://13.58.117.7:8000/api/v1"

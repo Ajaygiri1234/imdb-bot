@@ -1,5 +1,7 @@
+import pandas
 from robot.libraries.BuiltIn import BuiltIn
-
+from RunItems import post_complete_run_item,post_error_run_item
+from BotLogger import BotLogger
 from libraries.Communicate import RunItem
 from libraries.Constants import COMPLETED, ERROR
 from libraries.SetupError import setup_error
@@ -7,120 +9,177 @@ from Utils import log_to_console
 from Utils import log_to_console as print
 from RPA.Browser.Selenium import Selenium
 import time
-
+from RPA.Excel.Files import Files
+import pandas as pd
 
 
 class Imdbbot(object):
     def __init__(self) -> None:
         self.driver=Selenium()
-    def search_movies(self):
-        movie_name="the matrix"
+        self.MovieNotfound=False
+        self.logger=BotLogger()
+        
+    def open(self):
+        self.driver.open_chrome_browser(url='https://www.imdb.com/')
+
+    def search_movies(self,movie_name):
+        self.MovieNotfound = False
         url=f"https://www.imdb.com/find?q={movie_name}&s=tt&ttype=ft&exact=true"
         xpath_date =f"//td[@class='result_text']//a[translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz') =   '{movie_name}'   ]/.."
         xpath_link=f"//td[@class='result_text' and a[   translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz') =   '{movie_name}'   ]]/a"
-        self.driver.open_chrome_browser(url=url)
+        self.driver.go_to(url=url)
         list_of_date=self.driver.find_elements(locator=xpath_date)
         list_of_link=self.driver.find_elements(locator=xpath_link)
         movie_link=""
-
+       
         max_date=1800
         for i in range(len(list_of_date)):
-            date=list_of_date[i].text.split(" ")[-1][1:-1]
-            if int(date)>max_date:
-                max_date=int(date)
-                movie_link=list_of_link[i]
-        
-        log_to_console( movie_link.click())
-        time.sleep(5)
-        self.get_details()
-
-    def get_details(self):
-        
-
-        detail={}
-        rating=self.driver.find_element(locator='//div[@data-testid="hero-rating-bar__aggregate-rating__score"]/span[@class]').text
-        count=0
-        
-        while(1):
+            date_str=list_of_date[i].text.split(" ")[-1][1:-1]
             try:
-                storyline=self.driver.find_element(locator='//div[@data-testid="storyline-plot-summary"]//div[@class="ipc-html-content-inner-div"]').text
-                break
+                date = int(date_str)
+                
+                if int(date)>max_date:
+                    max_date=int(date)
+                    movie_link=list_of_link[i]
+            except Exception as e:
+                print("No date")
+        try:
+            movie_link.click()
+            time.sleep(5)
+        except Exception as e:
+            self.MovieNotfound = True
+            print(e)
+        # self.MovieNotfound = False
 
-            except:
-                
-                
-                time.sleep(5)
-                if count==12:
-                    storyline=''
+
+        
+
+    def get_details(self,movies_list):
+        result = {}
+        try:
+            started_at=BuiltIn().get_time()
+            self.open()
+            self.logger.logger.info('browser opened successfully')
+            log_text=self.logger.get_log_contents()
+            post_complete_run_item(started_at=started_at,completed_at=BuiltIn().get_time(),log_text=log_text)
+            self.logger.clear_logs()
+        except:
+            
+            return result
+        
+        for movie in movies_list:
+            started_at=BuiltIn().get_time()
+            self.logger.logger.info(f"searching exact match {movie}")
+            self.search_movies(movie_name=movie)
+            
+            if self.MovieNotfound:
+                self.logger.logger.info(f"exact match of {movie}not found")
+                log_text=self.logger.get_log_contents()
+                post_error_run_item(started_at=started_at,completed_at=BuiltIn().get_time(),log_text=log_text)
+                self.logger.clear_logs()
+                continue
+                print("Movie not found")
+            self.logger.logger.info(f"Exact match of {movie} found")
+            rating=self.driver.find_element(locator='//div[@data-testid="hero-rating-bar__aggregate-rating__score"]/span[@class]').text
+            self.logger.logger.info(f"rating of {movie} found -->{rating}")
+            count=0
+            
+            while(1):
+                try:
+                    storyline=self.driver.find_element(locator='//div[@data-testid="storyline-plot-summary"]//div[@class="ipc-html-content-inner-div"]').text
                     break
-                count+=1
 
-        genre_list=self.driver.find_elements(locator='//li[@data-testid="storyline-genres"]//ul/li')
-        genre=[]
-        for i in genre_list:
-            genre.append(i.text)
-        
-
-
-        log_to_console(rating)
-        log_to_console(storyline)
-        log_to_console(genre)
-        
-        self.driver.click_element(locator='//li[@data-testid="storyline-taglines"]/a')
-        time.sleep(2)
-        taglines=self.driver.find_elements(locator='//div[ @id="taglines_content"]/div[@class="soda odd" or @class="soda even"]')
-        tagline=[]
-        for i in taglines:
-            tagline.append(i.text)
-
-        print(tagline)
-        
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        # log_to_console(list_of_result[3].find_element_by_tag_name('a').)
-        # time.sleep(3)
-        # max_date=1800
-        # movie_link : self.driver.webdriver.remote.webelement.WebElement
-        # for each_result in range(len_of_result):
-           
-        #     name=each_result.find_element_by_tag_name('td')
-        #     log_to_console((name.text))
-        #     if name.text.lower()=="titanic":
-        #         date=int(each_result.text.split(" ")[-1][1:-1])
-        #         log_to_console(date)
-        #         if date>max_date:
-        #             max_date=date
-        #             movie_link=name
-        # movie_link.click()
-        
+                except:
+                    
+                    
+                    time.sleep(5)
+                    if count==12:
+                        storyline=''
+                        break
+                    count+=1
+            self.logger.logger.info(f"story line of {movie} found ")
+            genre_list=self.driver.find_elements(locator='//li[@data-testid="storyline-genres"]//ul/li')
+            genre=[]
+            for i in genre_list:
+                genre.append(i.text)
             
 
+            self.logger.logger.info(f"genre of {movie} is {genre} ")
+            
+            try:
+                self.driver.click_element(locator='//li[@data-testid="storyline-taglines"]/a')
+            
+                time.sleep(2)
+                taglines_object=self.driver.find_elements(locator='//div[ @id="taglines_content"]/div[@class="soda odd" or @class="soda even"]')
+                tagline=[]
+                for i in taglines_object:
+                    tagline.append(i.text)
+            except:
+                tagline=[self.driver.find_element(locator='//li[@data-testid="storyline-taglines"]//span[not (text()="Taglines")]').text]
+
+            self.logger.logger.info(f"tageline  of {movie} found")
+
+            log_to_console(rating)
+            log_to_console(storyline)
+            log_to_console(genre)
+            print(tagline)
+            result.update({movie : {
+                
+                'rating':rating,
+                'storyline': storyline,
+                'genre':genre,
+                'tagline':tagline,
+            }})
+            self.logger.logger.info(f"final result")
+            log_text=self.logger.get_log_contents()
+            report_data={
+                'movie_name':movie,
+                'rating':rating,
+                'storyline': storyline,
+                'genre':genre,
+                'tagline':tagline,
+            }
+            post_complete_run_item(started_at=started_at,completed_at=BuiltIn().get_time(),log_text=log_text,report_data=report_data)
+
+        return result
+
+
+
+
+
+class Excel():
+    def __init__(self) -> None:
+        self.file=Files()
+        self.columns=[]
+        self.movies=[]
+    def readmovies(self):
+        df=pd.read_excel('imdb_data.xlsx')
+        # print(list(df['Movie']))
+        # print(df.columns)
+        self.columns=list(df.columns)
+        self.movies = [x.lower() for x in list(df['Movie'])]
+        # print(self.movies)
+        return self.movies
+
+    def save_result(self,result):
+        df=pd.DataFrame.from_dict(result,orient='index')
+        df.to_excel('output/output.xlsx',)
+        print(df)
         
 
 
 
-        #     #log_to_console(each_result.text.split('\n')[0][-1])
-        
 
-        # # log_to_console(dir(a[0]))
-        # # log_to_console(("A"))#.get_attribute('href')
-        # # elem=a[0].find_element_by_tag_name('a').click()
-        # #elem.click()
-        # time.sleep(5)
+
+
+
+
+
+
+
+
+
+
         
 
 #  ['__class__', '__delattr__', '__dict__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattribute__', '__gt__', '__hash__'

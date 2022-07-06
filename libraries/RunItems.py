@@ -83,8 +83,8 @@ def post_complete_run_item(
         log_text=log_text,
         is_ticket=is_ticket,
     )
-
-    runitem_lib.create_run_items(run_items)
+    Utils.log_to_console(run_items)
+    # runitem_lib.create_run_items(run_items)
 
 
 def post_error_run_item(
@@ -104,5 +104,6 @@ def post_error_run_item(
         log_text=log_text,
         is_ticket=is_ticket,
     )
+    Utils.log_to_console(run_items)
 
-    runitem_lib.create_run_items(run_items)
+    # runitem_lib.create_run_items(run_items)
